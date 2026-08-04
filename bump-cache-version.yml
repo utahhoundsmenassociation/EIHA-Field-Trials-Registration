@@ -1,0 +1,36 @@
+name: Bump service worker cache version
+
+# Runs only when index.html changes, so this workflow's own commit
+# (which touches service-worker.js, not index.html) never re-triggers itself.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+
+permissions:
+  contents: write
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute hash of index.html and update CACHE_NAME
+        run: |
+          HASH=$(sha256sum index.html | cut -c1-10)
+          sed -i "s/const CACHE_NAME = \".*\";/const CACHE_NAME = \"eiha-signup-${HASH}\";/" service-worker.js
+          echo "New cache name: eiha-signup-${HASH}"
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if ! git diff --quiet service-worker.js; then
+            git add service-worker.js
+            git commit -m "Auto-bump service worker cache version [skip ci]"
+            git push
+          else
+            echo "No change in cache version, nothing to commit."
+          fi
