@@ -928,7 +928,12 @@ function updateProgress(){
 
 // ── SUBMIT ──────────────────────────────────────────────────────────────────
 function dogNameKey(name){return String(name||'').toLowerCase().replace(/[^a-z0-9]/g,'');}
-function markBad(el){if(el){el.style.borderColor='var(--red)';el.style.boxShadow='0 0 0 4px rgba(185,28,28,.15)';}}
+let _firstBad=null;
+function markBad(el){
+  if(!el)return;
+  el.style.borderColor='var(--red)';el.style.boxShadow='0 0 0 4px rgba(185,28,28,.15)';
+  if(!_firstBad)_firstBad=el;
+}
 
 function submitForm(){
   const first=document.getElementById('f-first').value.trim();
@@ -951,8 +956,11 @@ function submitForm(){
   const validationErrors=[];
   const classes=classList();
   const staged=[];
+  _firstBad=null;
+  let dogRowNo=0;
   document.querySelectorAll('.dog-block').forEach(b=>{
     const n=b.dataset.n;
+    dogRowNo++;
     const ownerEl=document.getElementById(`d${n}-o`);
     const handlerEl=document.getElementById(`d${n}-h`);
     const dogEl=document.getElementById(`d${n}-d`);
@@ -963,13 +971,20 @@ function submitForm(){
     const hasAnyInput=((ownerEl||{}).value||'').trim()||((handlerEl||{}).value||'').trim()||dogVal||ons.length;
     if(!hasAnyInput)return; // fully blank row — skip silently
     if(!dogVal){
-      validationErrors.push('Dog entry: dog name is missing');
+      // Something was started on this row — a handler, an owner or a ticked
+      // event — but there's no dog to attach it to. Name the row and say what
+      // was found on it, so it's obvious which card to go back to.
+      const found=[];
+      if(((ownerEl||{}).value||'').trim())found.push('owner');
+      if(((handlerEl||{}).value||'').trim())found.push('handler');
+      if(ons.length)found.push(ons.length===1?'1 event':`${ons.length} events`);
+      validationErrors.push(`Dog #${dogRowNo}: dog name is missing (${found.join(' and ')} filled in)`);
       markBad(dogEl);
       if(b.classList.contains('collapsed'))b.classList.remove('collapsed');
       return;
     }
     if(!ons.length){
-      validationErrors.push(`"${dogVal}": no events selected`);
+      validationErrors.push(`Dog #${dogRowNo} "${dogVal}": no events selected \u2014 tick a class or special event, or clear the row`);
       if(b.classList.contains('collapsed'))b.classList.remove('collapsed');
       return;
     }
@@ -1044,7 +1059,14 @@ function submitForm(){
 
   if(validationErrors.length){
     showMsg('⚠ Cannot submit — '+validationErrors.join(' · ')+'. Please fix the highlighted fields before submitting. No data has been saved and no payment should be collected yet.','err');
-    window.scrollTo({top:0,behavior:'smooth'});
+    // showMsg jumps to the banner at the top; give it a beat, then bring the
+    // actual offending field into view and put the cursor in it.
+    if(_firstBad){
+      setTimeout(()=>{
+        _firstBad.scrollIntoView({behavior:'smooth',block:'center'});
+        try{_firstBad.focus({preventScroll:true});}catch(e){}
+      },450);
+    }
     return;
   }
   if(dupWarn.length&&!confirm(`A dog can only be entered once per event:\n\n${dupWarn.join('\n')}\n\nSubmit anyway?`))return;
