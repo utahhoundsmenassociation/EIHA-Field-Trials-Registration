@@ -1,7 +1,7 @@
 // EIHA Sign-Up — Service Worker
 // CACHE_NAME is auto-bumped by .github/workflows/bump-cache-version.yml
 // on every push that changes index.html — no need to edit it by hand.
-const CACHE_NAME = "eiha-signup-v1.0";
+const CACHE_NAME = "eiha-signup-v11.2";
 const APP_SHELL = [
   "./",
   "./index.html",
