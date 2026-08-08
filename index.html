@@ -338,7 +338,7 @@ input[type=number]{-moz-appearance:textfield;}
     </div>
     <div class="row">
       <div class="field"><input class="fi" id="f-email" placeholder=" " type="email" inputmode="email"><label>Email</label></div>
-      <div class="field"><input class="fi" id="f-phone" placeholder=" " type="tel" inputmode="tel" oninput="calcCost()"><label>Phone *</label></div>
+      <div class="field"><input class="fi" id="f-phone" placeholder=" " type="tel" inputmode="tel" oninput="calcCost()"><label>Phone</label></div>
     </div>
   </div>
 
@@ -921,7 +921,7 @@ function calcCost(){
 
 function updateProgress(){
   const v=id=>{const e=document.getElementById(id);return e&&e.value?e.value.trim():'';};
-  const contact=!!(v('f-first')&&v('f-last')&&v('f-phone'));
+  const contact=!!(v('f-first')&&v('f-last'));
   const membership=hasMembership!==null||!cfg.nonMemberPricing;
   let hasDog=false;document.querySelectorAll('.dog-block').forEach(b=>{const e=document.getElementById('d'+b.dataset.n+'-d');if(e&&e.value.trim())hasDog=true;});
   let hasPack=false;document.querySelectorAll('.pack-block').forEach(b=>{const n=b.id.split('-')[1];const e=document.getElementById('p'+n+'-name');if(e&&e.value.trim())hasPack=true;});
@@ -949,7 +949,6 @@ function submitForm(){
   const phone=document.getElementById('f-phone').value.trim();
   if(cfg.nonMemberPricing&&hasMembership===null){showMsg('Please answer the membership question at the top — it sets the class-event price.','err');window.scrollTo({top:0,behavior:'smooth'});return;}
   if(!first||!last){showMsg('Owner first and last name are required.','err');return;}
-  if(!phone){showMsg('Phone number is required.','err');return;}
   const email=document.getElementById('f-email').value.trim();
   const registrant=`${first} ${last}`;
 
