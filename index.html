@@ -459,6 +459,13 @@ input[type=number]{-moz-appearance:textfield;}
   </div>
 
   <div class="card">
+    <div class="card-title"><span class="ico">🐾</span> Drag Classes</div>
+    <div class="card-sub">The six regular drag classes (Puppy, Junior, Senior, Old Dog, Powderpuff, Kids). Leave on for a spring drag trial. Turn off for a fall water event so only the water classes show on every dog entry.</div>
+    <label class="chk" id="land-toggle" onclick="toggleLand(this)"><input type="checkbox" id="land-chk" checked> Enable Drag Classes</label>
+    <div style="font-size:12px;color:var(--text3);margin-top:9px;line-height:1.6;">Special events &mdash; Treeing, Iron Dog, Big Bear Race &mdash; stay on every dog entry either way.</div>
+  </div>
+
+  <div class="card">
     <div class="card-title"><span class="ico">🌊</span> Water Races</div>
     <div class="card-sub">Turn on to add the six water classes (Water Puppy, Water Junior, Water Senior, Water Old Dog, Water Powderpuff, Water Kids) alongside the drag classes on every dog entry. Leave off for a spring drag-only trial.</div>
     <label class="chk" id="water-toggle" onclick="toggleWater(this)"><input type="checkbox" id="water-chk"> Enable Water Races</label>
@@ -561,11 +568,17 @@ input[type=number]{-moz-appearance:textfield;}
    ═══════════════════════════════════════════════════════════════════════════ */
 
 // ── CLASSES ─────────────────────────────────────────────────────────────────
-// Land (coon-drag) classes are always present. Water classes mirror them and
-// are switched on per event in Setup, exactly like the Manager.
+// Land (coon-drag) classes and water classes are each switched on per event in
+// Setup — spring trials are usually drag-only, fall water races are usually
+// water-only, and both can run together if an event needs it.
 const LAND_CE=['Puppy','Junior','Senior','Old Dog','Powderpuff','Kids'];
 const WATER_CE=LAND_CE.map(c=>'Water '+c);
-function classList(){return cfg.water?[...LAND_CE,...WATER_CE]:[...LAND_CE];}
+function classList(){
+  const out=[];
+  if(cfg.land!==false)out.push(...LAND_CE);
+  if(cfg.water)out.push(...WATER_CE);
+  return out;
+}
 function evLabel(ev){return ev.indexOf('Water ')===0?'\uD83C\uDF0A '+ev.slice(6):ev;}
 const SPECIAL=[{k:'treeing',l:'Treeing Contest'},{k:'ironDog',l:'Iron Dog (Jackpot)'},{k:'bigBearRace',l:'Big Bear Race (Jackpot)'}];
 
@@ -574,7 +587,7 @@ const SPECIAL=[{k:'treeing',l:'Treeing Contest'},{k:'ironDog',l:'Iron Dog (Jackp
 // member-sensitive ones; everything else is flat rate. Editable in Setup.
 const CFG_KEY='eiha_ipad_cfg';
 const PACK_PRICE_KEY='eiha_pack_pricing'; // legacy key, migrated on load
-const DEFAULT_CFG={heat:5,heatNonMember:8,treeing:5,ironDog:10,bigBearRace:10,membership:45,pack3:10,pack5:10,nonMemberPricing:true,water:false};
+const DEFAULT_CFG={heat:5,heatNonMember:8,treeing:5,ironDog:10,bigBearRace:10,membership:45,pack3:10,pack5:10,nonMemberPricing:true,land:true,water:false};
 let cfg=loadCfg();
 function loadCfg(){
   let c={...DEFAULT_CFG};
@@ -653,15 +666,30 @@ function ownerName(){
 function onOwnerChange(){refreshOwnerPlaceholders();calcCost();}
 // Every dog row and pack inherits the owner at the top of the form unless it's
 // been typed over, so the hint under each row names whoever is up there.
+// Handler boxes are also pre-filled with the owner name — most dogs are run by
+// their owner, and a pre-filled box is easier to trust than a blank one that
+// silently falls back. Anything typed over by hand is left alone.
+let _lastOwnerName='';
+function applyOwnerToHandlers(){
+  const o=ownerName();
+  document.querySelectorAll('.dog-handler,.pack-handler').forEach(el=>{
+    const cur=(el.value||'').trim();
+    // Empty, or still holding the owner name as it read a keystroke ago —
+    // either way nobody has typed a real handler in here, so keep it in sync.
+    if(!cur||(_lastOwnerName&&cur===_lastOwnerName))el.value=o;
+  });
+  _lastOwnerName=o;
+}
 function refreshOwnerPlaceholders(){
   const o=ownerName();
   const who=o?`<strong>${esc(o)}</strong>`:'the name at the top of the form';
   document.querySelectorAll('.dog-hint').forEach(el=>{
-    el.innerHTML=`Owner is ${who} from the contact information above. Leave Handler blank to use the owner. The Manager assigns this dog's permanent EIHA number automatically.`;
+    el.innerHTML=`Owner is ${who} from the contact information above. Handler fills in with the owner &mdash; type over it if someone else is running this dog. The Manager assigns this dog's permanent EIHA number automatically.`;
   });
   document.querySelectorAll('.pack-hint').forEach(el=>{
-    el.innerHTML=`Owner is ${who} from the contact information above. Leave Pack handler blank to use the owner.`;
+    el.innerHTML=`Owner is ${who} from the contact information above. Pack handler fills in with the owner &mdash; type over it if someone else is running the pack.`;
   });
+  applyOwnerToHandlers();
 }
 
 // ── CLASS LEGEND ────────────────────────────────────────────────────────────
@@ -688,7 +716,9 @@ function renderClassLegend(){
 // ── DOG ENTRIES ─────────────────────────────────────────────────────────────
 function classChkHtml(n,checked){
   const set=checked||new Set();
-  return classList().map(ev=>`<label class="dog-ev${set.has(ev)?' on':''}" onclick="toggleEv(this)"><input type="checkbox" value="${esc(ev)}"${set.has(ev)?' checked':''}><span>${evLabel(ev)}</span></label>`).join('');
+  const list=classList();
+  if(!list.length)return '<div style="font-size:12.5px;color:var(--text3);padding:2px 0;">No class events are switched on for this event &mdash; turn on Drag Classes or Water Races in Setup. Special events below still work.</div>';
+  return list.map(ev=>`<label class="dog-ev${set.has(ev)?' on':''}" onclick="toggleEv(this)"><input type="checkbox" value="${esc(ev)}"${set.has(ev)?' checked':''}><span>${evLabel(ev)}</span></label>`).join('');
 }
 function addDog(){
   const n=dogCount++;
@@ -846,7 +876,7 @@ function addPack(size){
     <div class="entry-body">
       <div class="field" style="margin-bottom:13px;"><input class="fi" id="p${n}-name" placeholder=" " oninput="this.style.borderColor='';this.style.boxShadow='';onPackName(${n});calcCost()"><label>Pack name *</label></div>
       <div class="row">
-        <div class="field"><input class="fi" id="p${n}-handler" placeholder=" "><label>Pack handler</label></div>
+        <div class="field"><input class="fi pack-handler" id="p${n}-handler" placeholder=" "><label>Pack handler</label></div>
       </div>
       <div class="hint-line pack-hint">Owner is the name in the contact information above. Leave Pack handler blank to use the owner.</div>
       <div class="ev-group-label">${size} Dog Names</div>
@@ -968,17 +998,22 @@ function submitForm(){
     // The owner is whoever filled in Owner & Contact Information at the top of
     // the form — it's never re-typed per dog. Handler falls back to the owner.
     const ownerVal=registrant;
-    const handlerVal=((handlerEl||{}).value||'').trim()||ownerVal;
+    const handlerTyped=((handlerEl||{}).value||'').trim();
+    const handlerVal=handlerTyped||ownerVal;
+    // The handler box is pre-filled with the owner name, so a box that still
+    // matches the owner was never typed in — it must not make an otherwise
+    // blank row look like a started entry.
+    const handlerIsCustom=!!handlerTyped&&handlerTyped!==ownerVal;
     const dogVal=((dogEl||{}).value||'').trim();
     const ons=[...b.querySelectorAll('.dog-ev.on input')].map(i=>i.value);
-    const hasAnyInput=((handlerEl||{}).value||'').trim()||dogVal||ons.length;
+    const hasAnyInput=handlerIsCustom||dogVal||ons.length;
     if(!hasAnyInput)return; // fully blank row — skip silently
     if(!dogVal){
       // Something was started on this row — a handler or a ticked event — but
       // there's no dog to attach it to. Name the row and say what was found on
       // it, so it's obvious which card to go back to.
       const found=[];
-      if(((handlerEl||{}).value||'').trim())found.push('handler');
+      if(handlerIsCustom)found.push('handler');
       if(ons.length)found.push(ons.length===1?'1 event':`${ons.length} events`);
       validationErrors.push(`Dog #${dogRowNo}: dog name is missing (${found.join(' and ')} filled in)`);
       markBad(dogEl);
@@ -1297,6 +1332,8 @@ function syncCfgInputs(){
   set('pack-price-3',cfg.pack3);set('pack-price-5',cfg.pack5);
   const nm=document.getElementById('nm-chk'),nml=document.getElementById('nm-toggle');
   if(nm){nm.checked=!!cfg.nonMemberPricing;if(nml)nml.classList.toggle('on',!!cfg.nonMemberPricing);}
+  const l=document.getElementById('land-chk'),ll=document.getElementById('land-toggle');
+  if(l){l.checked=cfg.land!==false;if(ll)ll.classList.toggle('on',cfg.land!==false);}
   const w=document.getElementById('water-chk'),wl=document.getElementById('water-toggle');
   if(w){w.checked=!!cfg.water;if(wl)wl.classList.toggle('on',!!cfg.water);}
 }
@@ -1316,8 +1353,8 @@ function savePricing(){
 }
 function resetPricing(){
   if(!confirm('Reset all pricing back to the confirmed EIHA defaults?'))return;
-  const water=cfg.water;
-  cfg={...DEFAULT_CFG,water};
+  const water=cfg.water,land=cfg.land;
+  cfg={...DEFAULT_CFG,water,land};
   saveCfg();syncCfgInputs();
   renderClassLegend();refreshPriceTags();updatePackPricePill();updateMemPricePill();calcCost();
   setPricingMsg('✓ Reset to EIHA defaults.','var(--green)');
@@ -1332,13 +1369,32 @@ function toggleNonMemberPricing(label){
     setPricingMsg(cfg.nonMemberPricing?'✓ Non-member rate on — the membership question sets the tier.':'✓ Non-member rate off — everyone pays the member rate.','var(--green)');
   },0);
 }
+function toggleLand(label){
+  setTimeout(()=>{
+    const chk=document.getElementById('land-chk');
+    cfg.land=!!chk.checked;
+    label.classList.toggle('on',chk.checked);
+    saveCfg();refreshClassEvents();
+    showMsg(cfg.land
+      ? 'Drag classes enabled — Puppy, Junior, Senior, Old Dog, Powderpuff and Kids are back on every dog entry.'
+      : (cfg.water
+          ? 'Drag classes turned off — water classes only on every dog entry.'
+          : 'Drag classes turned off. No class events are switched on now — turn on Water Races if this is a water event.'),
+      cfg.land||cfg.water?'ok':'err');
+  },0);
+}
 function toggleWater(label){
   setTimeout(()=>{
     const chk=document.getElementById('water-chk');
     cfg.water=!!chk.checked;
     label.classList.toggle('on',chk.checked);
     saveCfg();refreshClassEvents();
-    showMsg(cfg.water?'Water Races enabled — water classes added to every dog entry.':'Water Races turned off.','ok');
+    showMsg(cfg.water
+      ? 'Water Races enabled — water classes added to every dog entry.'
+      : (cfg.land!==false
+          ? 'Water Races turned off.'
+          : 'Water Races turned off. No class events are switched on now — turn on Drag Classes if this is a drag trial.'),
+      cfg.water||cfg.land!==false?'ok':'err');
   },0);
 }
 // Legacy name kept so any old cached button still works
